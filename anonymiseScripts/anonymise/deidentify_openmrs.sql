@@ -71,6 +71,42 @@ delimiter ;
 call randomize_names();
 drop procedure if exists randomize_names;
 
+
+update person_attribute
+inner join person_attribute_type
+on person_attribute_type.person_attribute_type_id = person_attribute.person_attribute_type_id
+set person_attribute.value = (select name
+                              from random_names
+							  order by rand()
+						      limit 1)
+where person_attribute_type.name = 'Nom du contact';
+
+
+drop table if exists random_phone_numbers;
+create table `random_phone_numbers` (
+	`nr` varchar(255) NOT NULL
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;
+
+insert into random_phone_numbers
+select a.value
+from person_attribute a inner join person_attribute_type t
+  on a.person_attribute_type_id = t.person_attribute_type_id
+where t.name in ('Tel 1', 'Tel 2', 'Tel 1 du Contact', 'Tel 2 du Contact')
+  and a.value is not null
+  and a.value <> "";
+
+update person_attribute
+inner join person_attribute_type
+on person_attribute_type.person_attribute_type_id = person_attribute.person_attribute_type_id
+set person_attribute.value = (select nr
+                              from random_phone_numbers
+							  order by rand()
+						      limit 1)
+where person_attribute_type.name in ('Tel 1', 'Tel 2', 'Tel 1 du Contact', 'Tel 2 du Contact');
+
+drop table random_names;
+drop table random_phone_numbers;
+
 --
 -- Randomize the birth dates and months (leave years the same)
 --
@@ -172,10 +208,12 @@ set
 --
 
 -- identifiers (Assumes patient_identifier have been truncated)
+/**
 CREATE TABLE temp_patient_identifier_old(patient_id int, identifier  varchar(256), PRIMARY KEY(patient_id));
 
 INSERT INTO temp_patient_identifier_old 
 SELECT patient_id, identifier FROM patient_identifier;
+**/
 
 TRUNCATE patient_identifier;
 
@@ -185,7 +223,7 @@ INSERT INTO
 SELECT
 	patient_id,
 	concat((Select prefix from idgen_seq_id_gen order by rand() limit 1), patient_id),
-	(Select patient_identifier_type_id from patient_identifier_type where name = 'Bahmni Id'),
+	(Select patient_identifier_type_id from patient_identifier_type where patient_identifier_type_id = 3),
 	1,
 	1,
 	1,
@@ -195,11 +233,11 @@ SELECT
 FROM
 	patient;
 
+/**
 CREATE table temp_person_uuid_old(person_id int, uuid varchar(256), PRIMARY KEY(person_id));
 
 INSERT INTO temp_person_uuid_old 
 SELECT person_id, uuid FROM person;
-
 
 	-- If you change columns here, edit copy_openmrs_patient_data_to_*.sql files
 SELECT p.uuid, pui.uuid old_uuid, pio.identifier old_identifier, pi.identifier, pn.given_name,  pn.middle_name,  pn.family_name,
@@ -217,6 +255,7 @@ LINES TERMINATED BY '\n';
 
 DROP TABLE temp_patient_identifier_old;
 DROP TABLE temp_person_uuid_old;
+**/
 
 --
 -- Bahmni specific
@@ -237,3 +276,4 @@ DELETE person_attribute
 FROM person_attribute
 INNER JOIN person_attribute_type on person_attribute_type.person_attribute_type_id = person_attribute.person_attribute_type_id
 AND person_attribute_type.name IN ('givenNameLocal', 'familyNameLocal', 'middleNameLocal');
+
